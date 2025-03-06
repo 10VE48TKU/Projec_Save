@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เพิ่มสิ่งอำนวยความสะดวก</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>เพิ่มสิ่งอำนวยความสะดวก</h2>
+        <form id="addFacilityForm">
+            <label for="facilityName">ชื่อสิ่งอำนวยความสะดวก</label>
+            <input type="text" id="facilityName" required placeholder="เช่น Wi-Fi, เครื่องปรับอากาศ">
+
+
+            <button type="submit" class="btn-add">เพิ่มสิ่งอำนวยความสะดวก</button>
+            <a href="dashboard.html" class="btn-back">ย้อนกลับ</a>
+        </form>
+        
+    </div>
+
+    <script>
+        document.getElementById("addFacilityForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            // ดึงค่าจาก input
+            const facilityName = document.getElementById("facilityName").value.trim();
+            // const status = document.getElementById("status").value;
+
+            // ตรวจสอบค่าที่ต้องมี
+            if (!facilityName) {
+                alert("⚠️ กรุณากรอกชื่อสิ่งอำนวยความสะดวก!");
+                return;
+            }
+
+            console.log("📌 Data to be sent:", {
+                Facility_Name: facilityName,
+                Status: status
+            });
+
+            try {
+                let response = await fetch("http://localhost:3000/add_facility", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        Facility_Name: facilityName,
+                        Status: status
+                    })
+                });
+
+                let data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "ไม่สามารถเพิ่มข้อมูลได้!");
+                }
+
+                alert("✅ เพิ่มข้อมูลสำเร็จ: " + data.message);
+                window.location.href = "dashboard.html"; // กลับไปหน้าหลัก
+
+            } catch (error) {
+                console.error("❌ Fetch error:", error);
+                alert("❌ เกิดข้อผิดพลาด: " + error.message);
+            }
+        });
+    </script>    
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เพิ่มหมวดหมู่หอพัก</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>เพิ่มหมวดหมู่หอพัก</h2>
+        <form id="addCategoryForm">
+            <label for="categoryName">ชื่อหมวดหมู่หอพัก</label>
+            <input type="text" id="categoryName" class="form-control" placeholder="กรอกชื่อหมวดหมู่หอพัก" required>
+
+            <button type="submit" class="btn-add">เพิ่ม</button>
+            <a href="dashboard.html" class="btn-back">ย้อนกลับ</a>
+        </form>
+
+
+    </div>
+
+    <script>
+        document.getElementById("addCategoryForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            let categoryName = document.getElementById("categoryName").value;
+
+            fetch("http://localhost:3000/api/dormitory_categories", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ Category_Name: categoryName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                window.location.href = "dashboard.html"; // กลับไปหน้าหลักหลังเพิ่มเสร็จ
+            })
+            .catch(error => {
+                console.error("❌ Error adding category:", error);
+                alert("เกิดข้อผิดพลาด กรุณาลองใหม่!");
+            });
+        });
+    </script>
+</body>
+</html>

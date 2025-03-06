@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Dormitory Type</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>เพิ่มประเภทหอพัก</h2>
+        <form id="addTypeForm">
+            <label for="typeName">ชื่อประเภทหอพัก</label>
+            <input type="text" id="typeName" required>
+            <button id="addButton" type="submit" class="btn-add">เพิ่ม</button> <!-- ✅ เพิ่ม id="addButton" -->
+            <a href="dashboard.html" class="btn-back">ย้อนกลับ</a>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("addTypeForm");
+
+            if (!form) {
+                console.error("❌ ไม่พบฟอร์ม addTypeForm");
+                return;
+            }
+
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault(); // ✅ ป้องกันการ reload หน้า
+
+                const newName = document.getElementById("typeName").value.trim();
+                if (!newName) {
+                    alert("⚠️ กรุณากรอกชื่อประเภทหอพัก!");
+                    return;
+                }
+
+                try {
+                    const response = await fetch("http://localhost:3000/api/dormitory_types", { // ✅ URL API ถูกต้อง
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ Dormitory_Type: newName }),
+                    });
+
+                    if (!response.ok) throw new Error("เพิ่มข้อมูลล้มเหลว");
+
+                    alert("✅ เพิ่มข้อมูลสำเร็จ!");
+                    window.location.href = "dashboard.html"; // ✅ กลับไปหน้าหลัก
+                } catch (error) {
+                    console.error("❌ Error adding data:", error);
+                    alert("❌ เกิดข้อผิดพลาดในการเพิ่มข้อมูล");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

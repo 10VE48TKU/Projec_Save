@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไขสิ่งอำนวยความสะดวก</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>แก้ไขสิ่งอำนวยความสะดวก</h2>
+        <form id="editFacilityForm">
+            <label for="facilityName">ชื่อสิ่งอำนวยความสะดวก</label>
+            <input type="text" id="facilityName" required>
+
+            <button type="submit" class="btn-edit">แก้ไข</button>
+            <a href="dashboard.html" class="btn-back">ย้อนกลับ</a>
+        </form>
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const params = new URLSearchParams(window.location.search);
+            const facilityId = params.get("id");
+
+            if (!facilityId) {
+                alert("❌ ไม่พบข้อมูลที่ต้องการแก้ไข!");
+                window.location.href = "dashboard.html";
+                return;
+            }
+
+            console.log("📌 Facility ID ที่ได้รับ:", facilityId);
+
+            // ✅ ดึงข้อมูล Facility จาก API
+            try {
+                let response = await fetch(`http://localhost:3000/facilities/${facilityId}`);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+                let data = await response.json();
+                console.log("📌 ข้อมูลที่โหลดได้:", data);
+
+                if (!data || data.error) {
+                    alert("❌ ไม่สามารถโหลดข้อมูลสิ่งอำนวยความสะดวก!");
+                    window.location.href = "dashboard.html";
+                    return;
+                }
+
+                // ✅ เติมค่าข้อมูลเก่าลงใน input
+                document.getElementById("facilityName").value = data.Facility_Name;
+
+            } catch (error) {
+                console.error("❌ Error fetching facility data:", error);
+                alert("❌ เกิดข้อผิดพลาดในการโหลดข้อมูล");
+                window.location.href = "dashboard.html";
+            }
+
+            // ✅ ฟอร์มส่งข้อมูล
+            document.getElementById("editFacilityForm").addEventListener("submit", async function (event) {
+                event.preventDefault();
+                console.log("✅ ปุ่มแก้ไขถูกกด!");
+
+                const updatedFacility = {
+                    Facility_Name: document.getElementById("facilityName").value.trim()
+                };
+
+                console.log("📌 ข้อมูลที่ส่งไป API:", updatedFacility);
+
+                try {
+                    let response = await fetch(`http://localhost:3000/update_facility/${facilityId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updatedFacility)
+                    });
+
+                    let result = await response.json();
+                    console.log("📌 API Response:", result);
+
+                    if (response.ok) {
+                        alert("✅ แก้ไขข้อมูลสำเร็จ!");
+                        window.location.href = "dashboard.html";
+                    } else {
+                        alert("❌ เกิดข้อผิดพลาด: " + (result.error || "ไม่สามารถแก้ไขข้อมูลได้!"));
+                    }
+                } catch (error) {
+                    console.error("❌ Error updating facility:", error);
+                    alert("❌ ไม่สามารถแก้ไขข้อมูลได้");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

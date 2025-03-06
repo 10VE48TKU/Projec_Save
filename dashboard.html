@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการข้อมูล</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h2 id="pageTitle">จัดการข้อมูล</h2>
+
+    <label for="dataSelect">เลือกข้อมูลที่ต้องการจัดการ:</label>
+    <select id="dataSelect">
+        <option value="dormitory_type">ประเภทหอพัก</option>
+        <option value="dormitory_category">หมวดหมู่หอพัก</option>
+        <option value="facility">สิ่งอำนวยความสะดวก</option>
+    </select>
+
+    <button id="addButton">เพิ่ม</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ชื่อ</th>
+                <th>การจัดการ</th>
+            </tr>
+        </thead>
+        <tbody id="dataTable">
+            <!-- ข้อมูลจะโหลดตรงนี้ -->
+        </tbody>
+    </table>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

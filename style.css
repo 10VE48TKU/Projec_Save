@@ -1,0 +1,174 @@
+/* ✅ สไตล์พื้นฐานของหน้าเว็บ */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    background: white;
+    padding: 20px;
+    margin: auto;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    text-align: center;
+}
+
+/* ✅ ปรับสไตล์อินพุต */
+input[type="text"], input[type="number"], select {
+    padding: 10px;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+/* ✅ ปุ่ม Add (สีเขียว) */
+.btn-add {
+    display: inline-block;
+    padding: 12px 18px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    font-size: 16px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.btn-add:hover {
+    background: #218838;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ ปุ่ม Back (สีเทา) */
+.btn-back {
+    display: inline-block;
+    padding: 12px 18px;
+    background: #6c757d;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-top: 10px;
+    transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    font-size: 16px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.btn-back:hover {
+    background: #5a6268;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ ปุ่ม Edit (สีฟ้า) */
+.btn-edit {
+    display: inline-block;
+    padding: 12px 18px;
+    background: #007BFF;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    text-align: center;
+    transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    font-size: 16px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.btn-edit:hover {
+    background: #0056b3;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ ปุ่ม Toggle Status (Enable/Disable) */
+.btn-toggle {
+    padding: 12px 18px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    color: white;
+    font-size: 16px;
+    transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ สีปุ่ม Enable & Disable */
+.btn-toggle.enable {
+    background-color: #28a745;
+}
+
+.btn-toggle.disable {
+    background-color: #dc3545;
+}
+
+.btn-toggle.enable:hover {
+    background-color: #218838;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn-toggle.disable:hover {
+    background-color: #c82333;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn-edit {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-edit:hover {
+    background-color: #0056b3;
+}
+
+.btn-toggle {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-toggle.enable {
+    background-color: green;
+    color: white;
+}
+
+.btn-toggle.disable {
+    background-color: red;
+    color: white;
+}
+
+.btn-toggle:hover {
+    opacity: 0.8;
+}
+
+
+/* ✅ ตาราง */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    font-size: 16px;
+}
+
+th {
+    background-color: #007bff;
+    color: white;
+}

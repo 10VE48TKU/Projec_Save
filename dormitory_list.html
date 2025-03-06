@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการหอพักของฉัน</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h2 style="text-align: center;">รายการหอพักของฉัน</h2>
+    <div style="margin-bottom: 10px;">
+    <button id="addDormitoryBtn" class="add-btn">+ เพิ่มข้อมูล</button>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ชื่อหอพัก</th>
+                <th>รายละเอียด</th>
+                <th>เบอร์ติดต่อ</th>
+                <th>อีเมล</th>
+                <th>ประเภทหอพัก</th>
+                <th>หมวดหมู่</th>
+                <!-- <th>สิ่งอำนวยความสะดวก</th> -->
+                <th>รูปภาพ</th>
+                <th>แก้ไข</th>
+                <th>เปลี่ยนสถานะ</th>
+            </tr>
+        </thead>
+        <tbody id="dormitoryTable">
+            <!-- ข้อมูลจะแสดงที่นี่ -->
+        </tbody>
+    </table>
+
+    <script src="dormitory_list.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไขข้อมูลประเภทหอพัก</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>แก้ไขข้อมูลประเภทหอพัก</h2>
+        <form id="editForm">
+            <label for="dormitoryType">ชื่อประเภทหอพัก</label>
+            <input type="text" id="dormitoryType" required>
+
+            <p id="loading" style="display: none; color: gray;">⏳ กำลังโหลดข้อมูล...</p>
+
+            <button type="submit" class="btn-edit">แก้ไข</button>
+            <a href="dashboard.html" class="btn-back">ย้อนกลับ</a>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get("id");
+
+            console.log("📌 ID ที่ได้รับ:", id);
+
+            if (!id || isNaN(id)) {
+                alert("❌ ไม่มี ID หรือ ID ไม่ถูกต้อง!");
+                window.location.href = "dashboard.html";
+                return;
+            }
+
+            document.getElementById("loading").style.display = "block"; // แสดงข้อความกำลังโหลด
+
+            try {
+                let response = await fetch(`http://localhost:3000/dormitory_types/${id}`);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+                let data = await response.json();
+                console.log("📌 ข้อมูลที่โหลดได้:", data);
+
+                if (!data || data.error) {
+                    alert("❌ ไม่พบข้อมูลประเภทหอพัก!");
+                    window.location.href = "dashboard.html";
+                    return;
+                }
+
+                document.getElementById("dormitoryType").value = data.Dormitory_Type;
+            } catch (error) {
+                console.error("❌ Error loading data:", error);
+                alert("เกิดข้อผิดพลาดในการโหลดข้อมูล!");
+            } finally {
+                document.getElementById("loading").style.display = "none"; // ซ่อนข้อความกำลังโหลด
+            }
+
+            document.getElementById("editForm").addEventListener("submit", async function (event) {
+                event.preventDefault();
+                console.log("✅ ปุ่มแก้ไขถูกกด!");
+
+                const dormitoryType = document.getElementById("dormitoryType").value.trim();
+                if (!dormitoryType) {
+                    alert("⚠️ กรุณากรอกชื่อประเภทหอพัก!");
+                    return;
+                }
+
+                try {
+                    let response = await fetch(`http://localhost:3000/update/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ Dormitory_Type: dormitoryType })
+                    });
+
+                    let data = await response.json();
+                    console.log("📌 API Response:", data);
+
+                    if (response.ok) {
+                        alert("✅ อัปเดตข้อมูลสำเร็จ!");
+                        window.location.href = "dashboard.html";
+                    } else {
+                        alert("❌ เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถอัปเดตข้อมูลได้!"));
+                    }
+                } catch (error) {
+                    console.error("❌ Error updating data:", error);
+                    alert("เกิดข้อผิดพลาดในการอัปเดตข้อมูล!");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

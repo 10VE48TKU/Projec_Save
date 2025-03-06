@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>เพิ่มหอพัก</title>
+</head>
+<body>
+    <h1>เพิ่มข้อมูลหอพัก</h1>
+    <form id="dormitoryForm">
+        <label>ชื่อหอพัก:</label>
+        <input type="text" id="dormName" required><br><br>
+
+        <label>รายละเอียด:</label>
+        <textarea id="description" required></textarea><br><br>
+
+        <label>รูปภาพหอพัก:</label>
+        <input type="file" id="dormPhoto"><br><br>
+
+        <label>ละติจูด:</label>
+        <input type="text" id="latitude" required><br><br>
+
+        <label>ลองจิจูด:</label>
+        <input type="text" id="longitude" required><br><br>
+
+        <label>เบอร์ติดต่อ:</label>
+        <input type="text" id="contactNumber" required><br><br>
+
+        <label>อีเมล:</label>
+        <input type="email" id="email" required><br><br>
+
+        <label>ประเภทหอพัก:</label>
+        <select id="dormType" required></select><br><br>
+
+        <label>หมวดหมู่:</label>
+        <select id="category" required></select><br><br>
+
+        <label>สิ่งอำนวยความสะดวก:</label><br>
+        <div id="facilityList"></div><br>
+
+        <button type="submit">บันทึกข้อมูล</button>
+        <a href="dormitory_list.html" class="btn-back">ย้อนกลับ</a>
+    </form>
+
+    <script src="add_dormitory.js"></script>
+</body>
+</html>

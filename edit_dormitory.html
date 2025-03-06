@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไขข้อมูลหอพัก</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h2>แก้ไขข้อมูลหอพัก</h2>
+    <form id="editDormitoryForm">
+        <label>ID หอพัก</label>
+        <input type="text" id="dormitory_id" readonly> <!-- ✅ แสดง ID แต่ห้ามแก้ไข -->
+
+        <label>ชื่อหอพัก</label>
+        <input type="text" id="dormitory_name" required>
+
+        <label>รายละเอียด</label>
+        <textarea id="description" required></textarea>
+
+        <label>เบอร์ติดต่อ</label>
+        <input type="text" id="contact_number" required>
+
+        <label>อีเมล</label>
+        <input type="email" id="dormitory_email" required>
+
+        <label>ประเภทหอพัก</label>
+        <select id="dormType"></select>
+
+        <label>หมวดหมู่</label>
+        <select id="category"></select>
+
+        <label>สิ่งอำนวยความสะดวก</label>
+        <div id="facilityList"></div>
+
+        <button type="submit" class="btn save-btn">บันทึกข้อมูล</button>
+        <button type="button" class="btn cancel-btn">ยกเลิก</button>
+    </form>
+
+    <script src="../Dormitory_Owner/domitory_js/edit_dormitory.js"></script>
+</body>
+</html>

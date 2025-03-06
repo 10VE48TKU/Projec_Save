@@ -1,0 +1,44 @@
+<table>
+    <tr>
+        <th>ชื่อหอพัก</th>
+        <th>เจ้าของ</th>
+        <th>วันที่ส่งคำขอ</th>
+        <th>การจัดการ</th>
+    </tr>
+    <tbody id="pendingList"></tbody>
+</table>
+
+<script>
+async function loadPendingDormitories() {
+    const res = await fetch("http://localhost:3000/api/pending_dormitories");
+    const data = await res.json();
+    const table = document.getElementById("pendingList");
+    table.innerHTML = data.map(d =>
+        `<tr>
+            <td>${d.Dormitory_Name}</td>
+            <td>${d.Username}</td>
+            <td>${new Date(d.Created_At).toLocaleString()}</td>
+            <td>
+                <button onclick="approveDormitory(${d.Pending_ID})">✅ อนุมัติ</button>
+                <button onclick="rejectDormitory(${d.Pending_ID})">❌ ปฏิเสธ</button>
+            </td>
+        </tr>`
+    ).join("");
+}
+
+async function approveDormitory(id) {
+    if (confirm("ยืนยันการอนุมัติ?")) {
+        await fetch(`http://localhost:3000/api/approve_dormitory/${id}`, { method: "POST" });
+        loadPendingDormitories();
+    }
+}
+
+async function rejectDormitory(id) {
+    if (confirm("ยืนยันการลบ?")) {
+        await fetch(`http://localhost:3000/api/reject_dormitory/${id}`, { method: "DELETE" });
+        loadPendingDormitories();
+    }
+}
+
+loadPendingDormitories();
+</script>
