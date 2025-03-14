@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
-
+app.use('/public', express.static('public'));
 
 // กำหนดตำแหน่งสำหรับจัดเก็บรูปภาพ
 const storage = multer.diskStorage({
@@ -37,6 +37,15 @@ db.connect(err => {
     }
     console.log("✅ เชื่อมต่อกับฐานข้อมูลสำเร็จ!");
 });
+
+// ✅ Middleware ตรวจสอบสิทธิ์นักศึกษา (User_Type = 1)
+const verifyStudent = (req, res, next) => {
+    const userType = req.headers["user_type"];
+    if (userType !== "1") {
+        return res.status(403).json({ error: "❌ คุณไม่มีสิทธิ์เข้าถึงข้อมูลนี้" });
+    }
+    next();
+};
 
 app.use(express.static(path.join(__dirname, "../public")));
 app.use(express.json());
@@ -385,6 +394,31 @@ app.put("/toggle_status/:id", (req, res) => {
     });
 });
 
+app.put("/api/dormitories/:id/toggle-status", (req, res) => {
+    const { id } = req.params;
+
+    // ดึงสถานะปัจจุบันจากฐานข้อมูล
+    db.query("SELECT Status FROM dormitory WHERE Dormitory_ID = ?", [id], (err, result) => {
+        if (err || result.length === 0) {
+            console.error("❌ Error fetching dormitory status:", err);
+            return res.status(500).json({ error: "Error fetching dormitory status" });
+        }
+
+        // สลับสถานะจาก "enable" เป็น "disable" และกลับกัน
+        const newStatus = result[0].Status === "enable" ? "disable" : "enable";
+
+        // อัปเดตสถานะใหม่ในฐานข้อมูล
+        db.query("UPDATE dormitory SET Status = ? WHERE Dormitory_ID = ?", [newStatus, id], (err) => {
+            if (err) {
+                console.error("❌ Error updating dormitory status:", err);
+                return res.status(500).json({ error: "Error updating dormitory status" });
+            }
+
+            res.json({ message: `✅ Dormitory status changed to ${newStatus}`, newStatus });
+        });
+    });
+});
+
 // ✅ API สำหรับผู้ดูแลระบบ (ดึงหอพักทั้งหมด)
 app.get("/api/admin/dormitories", (req, res) => {
     const sql = `
@@ -475,32 +509,69 @@ app.get("/api/owner/dormitories/:owner_id", (req, res) => {
     });
 });
 
-
-
 // ✅ API สำหรับเปลี่ยนสถานะหอพัก
-app.put("/api/dormitories/:id/status", (req, res) => {
+// app.put("/api/dormitories/:id/status", (req, res) => {
+//     const dormitoryID = req.params.id;
+//     const { Status } = req.body;
+
+//     console.log(`🔄 กำลังเปลี่ยนสถานะหอพัก ID: ${dormitoryID} เป็น ${Status}`);
+
+//     if (!Status || (Status !== "enable" && Status !== "disable")) {
+//         return res.status(400).json({ error: "ค่าของสถานะไม่ถูกต้อง" });
+//     }
+
+//     db.query("UPDATE dormitory SET Status = ? WHERE Dormitory_ID = ?", [Status, dormitoryID], (err, result) => {
+//         if (err) {
+//             console.error("❌ Error updating dormitory status:", err);
+//             return res.status(500).json({ error: "เกิดข้อผิดพลาดในการเปลี่ยนสถานะหอพัก" });
+//         }
+
+//         if (result.affectedRows === 0) {
+//             return res.status(404).json({ error: "ไม่พบข้อมูลหอพัก" });
+//         }
+
+//         console.log(`✅ เปลี่ยนสถานะหอพัก ID ${dormitoryID} เป็น "${Status}" สำเร็จ`);
+//         res.json({ message: `✅ เปลี่ยนสถานะหอพักเป็น "${Status}" สำเร็จ!`, newStatus: Status });
+//     });
+// });
+app.put("/api/dormitories/:id/status", async (req, res) => {
     const dormitoryID = req.params.id;
-    const { Status } = req.body;
+    const { status } = req.body;
 
-    console.log(`🔄 กำลังเปลี่ยนสถานะหอพัก ID: ${dormitoryID} เป็น ${Status}`);
+    console.log(`🔄 กำลังเปลี่ยนสถานะหอพัก ID: ${dormitoryID} เป็น "${status}"`);
 
-    if (!Status || (Status !== "enable" && Status !== "disable")) {
+    if (!["enable", "rejected"].includes(status)) {
         return res.status(400).json({ error: "ค่าของสถานะไม่ถูกต้อง" });
     }
 
-    db.query("UPDATE dormitory SET Status = ? WHERE Dormitory_ID = ?", [Status, dormitoryID], (err, result) => {
-        if (err) {
-            console.error("❌ Error updating dormitory status:", err);
-            return res.status(500).json({ error: "เกิดข้อผิดพลาดในการเปลี่ยนสถานะหอพัก" });
-        }
+    try {
+        // ✅ อัปเดตสถานะหอพัก
+        await db.promise().query(
+            "UPDATE dormitory SET Status = ? WHERE Dormitory_ID = ?",
+            [status, dormitoryID]
+        );
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "ไม่พบข้อมูลหอพัก" });
-        }
+        console.log(`✅ สถานะของหอพัก ID: ${dormitoryID} เปลี่ยนเป็น "${status}" แล้ว`);
 
-        console.log(`✅ เปลี่ยนสถานะหอพัก ID ${dormitoryID} เป็น "${Status}" สำเร็จ`);
-        res.json({ message: `✅ เปลี่ยนสถานะหอพักเป็น "${Status}" สำเร็จ!`, newStatus: Status });
-    });
+        // ✅ ดึงข้อมูลสิ่งอำนวยความสะดวก
+        const [facilities] = await db.promise().query(
+            `SELECT f.Facility_ID, f.Facility_Name 
+            FROM facility f
+            JOIN con_fasility_dormitory cfd ON f.Facility_ID = cfd.Facility_ID
+            WHERE cfd.Dormitory_ID = ?`,
+            [dormitoryID]
+        );
+
+        res.json({
+            message: `✅ เปลี่ยนสถานะหอพักเป็น "${status}" สำเร็จ!`,
+            newStatus: status,
+            facilities
+        });
+
+    } catch (error) {
+        console.error("❌ Error updating dormitory status:", error);
+        res.status(500).json({ error: "เกิดข้อผิดพลาดในการเปลี่ยนสถานะหอพัก" });
+    }
 });
 
 // ✅ API ดึงข้อมูลหอพักตาม ID
@@ -531,7 +602,7 @@ app.put("/api/dormitories/:id", async (req, res) => {
     const { Dormitory_Name, Description, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, Facilities } = req.body;
 
     console.log("Facilities:", Facilities)
-    let newFacilities = Facilities.map(item=>{
+    let newFacilities = Facilities.map(item => {
         return [dormitoryID, item]
     })
     console.log('after:', newFacilities)
@@ -591,119 +662,11 @@ app.get("/api/dormitories", (req, res) => {
     });
 });
 
-// ✅ API เพิ่มข้อมูลหอพัก
-// app.post('/api/dormitories', upload.single('Dormitory_Photo'), async (req, res) => {
-//     console.log("📝 Data Received:", req.body);
-//     console.log("📸 Uploaded File:", req.file);
-
-//     const { Dormitory_Name, Description, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID, Facilities } = req.body;
-//     const dormPhoto = req.file ? req.file.filename : null;
-
-//     if (!Dormitory_Name || !Dormitory_Type_ID || !Category_ID || !User_ID || !Owner_ID) {
-//         return res.status(400).json({ message: "⚠️ ข้อมูลไม่ครบถ้วน กรุณากรอกทุกช่องที่จำเป็น" });
-//     }
-
-//     let facilitiesArray = [];
-//     try {
-//         facilitiesArray = JSON.parse(Facilities);
-//         if (!Array.isArray(facilitiesArray) || facilitiesArray.some(id => typeof id !== "number")) {
-//             throw new Error("Facilities ต้องเป็น array ของตัวเลข");
-//         }
-//     } catch (error) {
-//         console.error("❌ Error parsing facilities:", error);
-//         return res.status(400).json({ message: "รูปแบบข้อมูล Facilities ไม่ถูกต้อง", error: error.message });
-//     }
-
-//     console.log("✅ Facilities Array:", facilitiesArray);
-
-//     const insertDormitorySQL = `
-//         INSERT INTO dormitory 
-//         (Dormitory_Name, Description, Dormitory_Photo, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID)
-//         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-//     `;
-
-//     const dormitoryValues = [
-//         Dormitory_Name, Description || null, dormPhoto || null,
-//         Latitude || null, Longitude || null, Contact_Number || null,
-//         Dormitory_Email || null, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID
-//     ];
-
-//     try {
-//         const [dormitoryResult] = await db.promise().execute(insertDormitorySQL, dormitoryValues);
-//         const newDormitoryID = dormitoryResult.insertId;
-//         console.log(`✅ Dormitory inserted with ID: ${newDormitoryID}`);
-//         console.log(`✅ Dormitory typeof ID: ${typeof newDormitoryID}`);
-
-//         // update case
-//         // const del_sql = `DELETE FROM con_fasility_dormitory WHERE Dormitory_ID = ?;`
-//         // // ✅ ลบข้อมูลเก่าของหอพักใน `con_facility_dormitory`
-//         // await db.promise().execute(del_sql, [newDormitoryID]);
-//         // console.log(`🗑️ Deleted old facilities for Dormitory ID: ${newDormitoryID}`);
-
-//         // ✅ เพิ่ม Facilities ถ้ามีข้อมูล
-//         if (facilitiesArray.length > 0) {
-//             const insertFacilitiesSQL = `INSERT INTO con_fasility_dormitory (Dormitory_ID, Facility_ID) VALUES ?`;
-//             const facilitiesValues = facilitiesArray.map(facilityID => [newDormitoryID, facilityID]);
-
-//             await db.promise().query(insertFacilitiesSQL, [facilitiesValues]);
-//             console.log(`✅ Facilities added for Dormitory ID: ${newDormitoryID}`);
-//         }
-
-//         res.json({ message: "✅ เพิ่มข้อมูลหอพักสำเร็จ!", dormitoryId: newDormitoryID });
-
-//     } catch (error) {
-//         console.error("❌ Error adding dormitory:", error);
-//         res.status(500).json({ message: "เกิดข้อผิดพลาดในการเพิ่มข้อมูล", error: error.message });
-//     }
-// });
 // ✅ API: เพิ่มหอพักโดยเจ้าของ (สถานะเริ่มต้น = 'pending_approval')
-// app.post('/api/dormitories', upload.single('Dormitory_Photo'), async (req, res) => {
-//     console.log("📝 Data Received:", req.body);
-//     console.log("📸 Uploaded File:", req.file);
-
-//     const { Dormitory_Name, Description, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID, Facilities } = req.body;
-//     const dormPhoto = req.file ? req.file.filename : null;
-
-//     if (!Dormitory_Name || !Dormitory_Type_ID || !Category_ID || !User_ID || !Owner_ID) {
-//         return res.status(400).json({ message: "⚠️ ข้อมูลไม่ครบถ้วน กรุณากรอกทุกช่องที่จำเป็น" });
-//     }
-
-//     try {
-//         let facilitiesArray = JSON.parse(Facilities);
-//         if (!Array.isArray(facilitiesArray) || facilitiesArray.some(id => typeof id !== "number")) {
-//             throw new Error("Facilities ต้องเป็น array ของตัวเลข");
-//         }
-
-//         const insertDormitorySQL = `
-//             INSERT INTO dormitory 
-//             (Dormitory_Name, Description, Dormitory_Photo, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID, Status)
-//             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval')
-//         `;
-
-//         const dormitoryValues = [
-//             Dormitory_Name, Description || null, dormPhoto || null,
-//             Latitude || null, Longitude || null, Contact_Number || null,
-//             Dormitory_Email || null, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID
-//         ];
-
-//         const [dormitoryResult] = await db.promise().execute(insertDormitorySQL, dormitoryValues);
-//         const newDormitoryID = dormitoryResult.insertId;
-
-//         if (facilitiesArray.length > 0) {
-//             const insertFacilitiesSQL = `INSERT INTO con_fasility_dormitory (Dormitory_ID, Facility_ID) VALUES ?`;
-//             const facilitiesValues = facilitiesArray.map(facilityID => [newDormitoryID, facilityID]);
-//             await db.promise().query(insertFacilitiesSQL, [facilitiesValues]);
-//         }
-
-//         console.log("📢 แจ้งเตือนผู้ดูแลระบบ: มีหอพักใหม่รอการอนุมัติ!");
-//         res.json({ message: "✅ เพิ่มข้อมูลหอพักเรียบร้อย! รอการอนุมัติจากผู้ดูแลระบบ", dormitoryId: newDormitoryID });
-
-//     } catch (error) {
-//         console.error("❌ Error adding dormitory:", error);
-//         res.status(500).json({ message: "เกิดข้อผิดพลาดในการเพิ่มข้อมูล", error: error.message });
-//     }
-// });
 app.post('/api/dormitories', upload.single('Dormitory_Photo'), async (req, res) => {
+    console.log("📝 Data Received:", req.body);
+    console.log("📸 Uploaded File:", req.file);
+
     const { Dormitory_Name, Description, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID, Facilities } = req.body;
     const dormPhoto = req.file ? req.file.filename : null;
 
@@ -711,34 +674,58 @@ app.post('/api/dormitories', upload.single('Dormitory_Photo'), async (req, res) 
         return res.status(400).json({ message: "⚠️ ข้อมูลไม่ครบถ้วน กรุณากรอกทุกช่องที่จำเป็น" });
     }
 
-    const insertDormitorySQL = `
-        INSERT INTO dormitory 
-        (Dormitory_Name, Description, Dormitory_Photo, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID, Status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval')
-    `;
-
-    const dormitoryValues = [
-        Dormitory_Name, Description || null, dormPhoto || null,
-        Latitude || null, Longitude || null, Contact_Number || null,
-        Dormitory_Email || null, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID
-    ];
-
     try {
+        let facilitiesArray = JSON.parse(Facilities);
+        if (!Array.isArray(facilitiesArray) || facilitiesArray.some(id => typeof id !== "number")) {
+            throw new Error("Facilities ต้องเป็น array ของตัวเลข");
+        }
+
+        const insertDormitorySQL = `
+            INSERT INTO dormitory 
+            (Dormitory_Name, Description, Dormitory_Photo, Latitude, Longitude, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID, Status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval')
+        `;
+
+        const dormitoryValues = [
+            Dormitory_Name, Description || null, dormPhoto || null,
+            Latitude || null, Longitude || null, Contact_Number || null,
+            Dormitory_Email || null, Dormitory_Type_ID, Category_ID, User_ID, Owner_ID
+        ];
+
         const [dormitoryResult] = await db.promise().execute(insertDormitorySQL, dormitoryValues);
-        res.json({ message: "✅ Dormitory added successfully!", dormitoryId: dormitoryResult.insertId });
+        const newDormitoryID = dormitoryResult.insertId;
+
+        if (facilitiesArray.length > 0) {
+            const insertFacilitiesSQL = `INSERT INTO con_fasility_dormitory (Dormitory_ID, Facility_ID) VALUES ?`;
+            const facilitiesValues = facilitiesArray.map(facilityID => [newDormitoryID, facilityID]);
+            await db.promise().query(insertFacilitiesSQL, [facilitiesValues]);
+        }
+
+        console.log("📢 แจ้งเตือนผู้ดูแลระบบ: มีหอพักใหม่รอการอนุมัติ!");
+        res.json({ message: "✅ เพิ่มข้อมูลหอพักเรียบร้อย! รอการอนุมัติจากผู้ดูแลระบบ", dormitoryId: newDormitoryID });
 
     } catch (error) {
-        res.status(500).json({ message: "❌ Error adding dormitory", error: error.message });
+        console.error("❌ Error adding dormitory:", error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการเพิ่มข้อมูล", error: error.message });
     }
 });
 
 app.get("/api/dormitories/:id", (req, res) => {
     const { id } = req.params;
 
-    // 🔹 Query ดึงข้อมูลหอพัก
-    const dormitoryQuery = `SELECT * FROM dormitory WHERE Dormitory_ID = ?`;
+    // ✅ Query ดึงข้อมูลหอพัก + JOIN ประเภทหอพัก และหมวดหมู่
+    const dormitoryQuery = `
+        SELECT 
+            d.*, 
+            dt.Dormitory_Type,  -- ดึงชื่อประเภทหอพัก
+            dc.Category_Name    -- ดึงชื่อหมวดหมู่หอพัก
+        FROM dormitory d
+        LEFT JOIN dormitory_type dt ON d.Dormitory_Type_ID = dt.Dormitory_Type_ID
+        LEFT JOIN dormitory_category dc ON d.Category_ID = dc.Category_ID
+        WHERE d.Dormitory_ID = ?
+    `;
 
-    // 🔹 Query ดึงสิ่งอำนวยความสะดวกที่เกี่ยวข้องกับหอพัก
+    // ✅ Query ดึงสิ่งอำนวยความสะดวกที่เกี่ยวข้องกับหอพัก
     const facilityQuery = `
         SELECT f.Facility_ID, f.Facility_Name 
         FROM facility f
@@ -752,17 +739,17 @@ app.get("/api/dormitories/:id", (req, res) => {
             return res.status(404).json({ error: "ไม่พบข้อมูลหอพัก" });
         }
 
-        // ดึงข้อมูลสิ่งอำนวยความสะดวก
+        // ✅ ดึงข้อมูลสิ่งอำนวยความสะดวก
         db.query(facilityQuery, [id], (err, facilityResult) => {
             if (err) {
                 console.error("❌ Error fetching facilities:", err);
                 return res.status(500).json({ error: "เกิดข้อผิดพลาดในการโหลดสิ่งอำนวยความสะดวก" });
             }
 
-            // รวมข้อมูลหอพัก + สิ่งอำนวยความสะดวก
+            // ✅ รวมข้อมูลหอพัก + สิ่งอำนวยความสะดวก + ประเภท + หมวดหมู่
             const dormitoryData = {
-                ...dormResult[0],
-                facilities: facilityResult // ✅ ใส่ facilities เข้าไป
+                ...dormResult[0], // ดึงข้อมูลหอพัก
+                facilities: facilityResult // ✅ ใส่สิ่งอำนวยความสะดวก
             };
 
             res.json(dormitoryData);
@@ -849,24 +836,6 @@ app.put("/api/dormitories/:id", (req, res) => {
                 });
             });
         });
-    });
-});
-
-//เจ้าของหอส่งข้อมูลเข้ามา
-app.post("/api/pending_dormitories", (req, res) => {
-    const { Dormitory_Name, Description, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, Owner_ID } = req.body;
-
-    const query = `
-        INSERT INTO pending_dormitories (Dormitory_Name, Description, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, Owner_ID)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    db.query(query, [Dormitory_Name, Description, Contact_Number, Dormitory_Email, Dormitory_Type_ID, Category_ID, Owner_ID], (err, result) => {
-        if (err) {
-            console.error("❌ Error inserting pending dormitory:", err);
-            return res.status(500).json({ error: "เกิดข้อผิดพลาดในการเพิ่มหอพักลงในรายการรอการยืนยัน" });
-        }
-        res.json({ message: "✅ หอพักถูกเพิ่มไปยังรายการรอการยืนยันแล้ว!" });
     });
 });
 
@@ -960,6 +929,185 @@ app.get("/api/dormitories/app/pending", (req, res) => {
         if (results.length === 0) {
             return res.status(404).json({ error: "ไม่พบข้อมูลหอพัก" });
         }
+        res.json(results);
+    });
+});
+
+// ดึงห้องพัก
+app.get("/api/dormitories/:id/rooms", (req, res) => {
+    const dormitoryId = req.params.id;
+
+    const query = `
+        SELECT Room_ID, Room_Number, Room_Type, Price, Availability
+        FROM room
+        WHERE Dormitory_ID = ?
+    `;
+
+    db.query(query, [dormitoryId], (err, results) => {
+        if (err) {
+            console.error("❌ Error fetching rooms:", err);
+            return res.status(500).json({ error: "เกิดข้อผิดพลาดในการโหลดห้องพัก" });
+        }
+        res.json(results);
+    });
+});
+
+
+// API เพิ่มห้องพัก
+app.post("/api/rooms", (req, res) => {
+    const { Room_Number, Room_Type, Capacity, Availability, Price, Price_Type, Additional_Fees, Dormitory_ID } = req.body;
+
+    if (!Room_Number || !Room_Type || !Capacity || !Price || !Price_Type || !Dormitory_ID) {
+        return res.status(400).json({ error: "⚠️ กรุณากรอกข้อมูลให้ครบถ้วน" });
+    }
+
+    const query = `
+        INSERT INTO room (Room_Number, Room_Type, Capacity, Availability, Price, Price_Type, Additional_Fees, Dormitory_ID) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(query, [Room_Number, Room_Type, Capacity, Availability, Price, Price_Type, Additional_Fees, Dormitory_ID], (err, result) => {
+        if (err) {
+            console.error("❌ Error adding room:", err);
+            return res.status(500).json({ error: "❌ เกิดข้อผิดพลาดในการเพิ่มห้องพัก" });
+        }
+        res.json({ message: "✅ เพิ่มห้องพักสำเร็จ!", Room_ID: result.insertId });
+    });
+});
+
+// API เปลี่ยนสถานะห้องพัก
+app.put("/api/rooms/:id/status", (req, res) => {
+    const { id } = req.params;
+    const { Availability } = req.body;
+
+    if (!Availability || (Availability !== "available" && Availability !== "not_available")) {
+        return res.status(400).json({ error: "ค่าสถานะไม่ถูกต้อง" });
+    }
+
+    const query = `UPDATE room SET Availability = ? WHERE Room_ID = ?`;
+
+    db.query(query, [Availability, id], (err, result) => {
+        if (err) {
+            console.error("❌ Error updating room status:", err);
+            return res.status(500).json({ error: "เกิดข้อผิดพลาดในการเปลี่ยนสถานะห้องพัก" });
+        }
+        res.json({ message: "✅ เปลี่ยนสถานะห้องพักสำเร็จ!" });
+    });
+});
+
+// ดึงตาม id
+app.get("/api/rooms/:id", (req, res) => {
+    const { id } = req.params;
+    const query = `SELECT * FROM room WHERE Room_ID = ?`;
+
+    db.query(query, [id], (err, result) => {
+        if (err || result.length === 0) {
+            console.error("❌ Error fetching room:", err);
+            return res.status(404).json({ error: "ไม่พบข้อมูลห้องพัก" });
+        }
+        res.json(result[0]);
+    });
+});
+
+// ✅ อัปเดตข้อมูลห้องพัก
+app.put("/api/rooms/:id", (req, res) => {
+    const { id } = req.params;
+    const { Room_Number, Room_Type, Capacity, Price, Price_Type, Additional_Fees } = req.body;
+
+    const query = `
+        UPDATE room 
+        SET Room_Number=?, Room_Type=?, Capacity=?, Price=?, Price_Type=?, Additional_Fees=? 
+        WHERE Room_ID=?
+    `;
+
+    db.query(query, [Room_Number, Room_Type, Capacity, Price, Price_Type, Additional_Fees, id], (err, result) => {
+        if (err) {
+            console.error("❌ Error updating room:", err);
+            return res.status(500).json({ error: "ไม่สามารถอัปเดตข้อมูลห้องพัก" });
+        }
+        res.json({ message: "✅ อัปเดตห้องพักสำเร็จ!" });
+    });
+});
+
+
+// ✅ ดึงรายการหอพักทั้งหมด (เฉพาะนักศึกษา)
+app.get("/api/student/dormitories", (req, res) => {
+    const sql = `
+        SELECT d.Dormitory_ID, d.Dormitory_Name, d.Contact_Number, d.Dormitory_Email,
+        IFNULL(GROUP_CONCAT(f.Facility_Name), 'ไม่มีข้อมูล') AS Facility_Names
+        FROM dormitory d
+        LEFT JOIN con_fasility_dormitory cfd ON d.Dormitory_ID = cfd.Dormitory_ID
+        LEFT JOIN facility f ON cfd.Facility_ID = f.Facility_ID
+        GROUP BY d.Dormitory_ID
+    `;
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("❌ Error fetching dormitories:", err);
+            return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
+        }
+        res.json(results);
+    });
+});
+
+// ✅ ดึงรายละเอียดหอพัก (รวมประเภท, หมวดหมู่, สิ่งอำนวยความสะดวก)
+app.get("/api/student/dormitories/:id", (req, res) => {
+    const { id } = req.params;
+
+    const dormitoryQuery = `
+        SELECT 
+            d.*, 
+            IFNULL(GROUP_CONCAT(f.Facility_Name), 'ไม่มีข้อมูล') AS Facility_Names
+        FROM dormitory d
+        LEFT JOIN con_fasility_dormitory cfd ON d.Dormitory_ID = cfd.Dormitory_ID
+        LEFT JOIN facility f ON cfd.Facility_ID = f.Facility_ID
+        WHERE d.Dormitory_ID = ?
+        GROUP BY d.Dormitory_ID;
+    `;
+
+    const roomQuery = `
+        SELECT 
+            Room_ID, Room_Number, Room_Type, Capacity, Price, Price_Type, Availability , Additional_Fees
+        FROM room 
+        WHERE Dormitory_ID = ?;
+    `;
+
+    db.query(dormitoryQuery, [id], (err, dormResult) => {
+        if (err || dormResult.length === 0) {
+            console.error("❌ Error fetching dormitory details:", err);
+            return res.status(404).json({ message: "ไม่พบข้อมูลหอพัก" });
+        }
+
+        db.query(roomQuery, [id], (err, roomResult) => {
+            if (err) {
+                console.error("❌ Error fetching rooms:", err);
+                return res.status(500).json({ message: "เกิดข้อผิดพลาดในการโหลดห้องพัก" });
+            }
+
+            res.json({
+                ...dormResult[0],
+                rooms: roomResult
+            });
+        });
+    });
+});
+
+// ✅ ดึงข้อมูลห้องพักของหอพักที่เลือก
+app.get("/api/dormitories/student/:id/rooms", (req, res) => {
+    const { id } = req.params;
+    const query = `
+        SELECT 
+    Room_ID, Room_Number, Room_Type, Capacity, Price, Price_Type, Availability , Additional_Fees
+    FROM room 
+    WHERE Dormitory_ID = ?;
+    `;
+    
+    db.query(query, [id], (err, results) => {
+        if (err) {
+            console.error("❌ Error fetching rooms:", err);
+            return res.status(500).json({ error: "เกิดข้อผิดพลาดในการโหลดข้อมูลห้องพัก" });
+        }
+        console.log("🔍 ตรวจสอบข้อมูลห้องพัก:", results); // ✅ Debug ตรงนี้
         res.json(results);
     });
 });
