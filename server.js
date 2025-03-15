@@ -11,6 +11,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use('/public', express.static('public'));
+app.use("/Student", express.static(path.join(__dirname, "public/Student")));
+// ✅ เสิร์ฟโฟลเดอร์ Login
+app.use("/Login", express.static(path.join(__dirname, "public/Login")));
 
 // กำหนดตำแหน่งสำหรับจัดเก็บรูปภาพ
 const storage = multer.diskStorage({
@@ -56,7 +59,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "../public/Administrator/dashboard.html"));
+    res.sendFile(path.join(__dirname, "public/Login/login.html"));
 });
 
 app.get("/dashboard_data", (req, res) => {
@@ -1210,6 +1213,57 @@ app.put("/api/admin/users/:id", (req, res) => {
         res.json({ message: "✅ อัปเดตข้อมูลผู้ใช้สำเร็จ!" });
     });
 });
+
+// ✅ API สำหรับเข้าสู่ระบบ
+app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน" });
+    }
+
+    const sql = "SELECT User_ID, Username, Password, Type_ID FROM user WHERE Username = ?";
+    db.query(sql, [username], (err, results) => {
+        if (err) {
+            console.error("❌ Error checking user:", err);
+            return res.status(500).json({ error: "เกิดข้อผิดพลาดในการเข้าสู่ระบบ" });
+        }
+
+        if (results.length === 0) {
+            return res.status(401).json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        }
+
+        const user = results[0];
+
+        if (password !== user.Password) { // ควรใช้ bcrypt เปรียบเทียบรหัสผ่านที่เข้ารหัส
+            return res.status(401).json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+        }
+
+        // ✅ ตรวจสอบประเภทของผู้ใช้
+        let redirectUrl = "";
+        if (user.Type_ID === 1) {
+            redirectUrl = "/Student/student_dormitory_list.html"; // นักศึกษา
+        } else if (user.Type_ID === 2) {
+            redirectUrl = "/Dormitory_Owner/dormitory_list.html"; // เจ้าของหอพัก
+        } else if (user.Type_ID === 3) {
+            redirectUrl = "/Administrator/dashboard.html"; // ผู้ดูแลระบบ
+        } else {
+            return res.status(403).json({ error: "❌ คุณไม่มีสิทธิ์เข้าถึงระบบนี้" });
+        }
+
+        res.json({
+            message: "✅ เข้าสู่ระบบสำเร็จ!",
+            user: {
+                id: user.User_ID,
+                username: user.Username,
+                type: user.Type_ID,
+            },
+            redirectUrl: redirectUrl
+        });
+    });
+});
+
+
 
 // ✅ Start Server
 app.listen(3000, () => {
