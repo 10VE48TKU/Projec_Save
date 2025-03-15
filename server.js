@@ -1129,7 +1129,87 @@ app.get("/api/dormitories/student/:id/rooms", (req, res) => {
     });
 });
 
+// เพิ่ม API แก้ไขบัญชีผู้ใช้
+app.get("/api/admin/users", (req, res) => {
+    const sql = `
+        SELECT User_ID, Username, FName, LName, Email, Phone, Type_ID
+        FROM user
+        WHERE Type_ID IN (1,2) 
+    `;
 
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("❌ Error fetching users:", err);
+            return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้" });
+        }
+        console.log("📢 Users Data:", results); // 🔍 Log ดูว่าข้อมูลถูกดึงมาได้หรือไม่
+        res.json(results);
+    });
+});
+
+// เพิ่ม API ลบบัญชีผู้ใช้
+app.delete("/api/admin/users/:id", (req, res) => {
+    const userId = req.params.id;
+
+    const sql = `DELETE FROM user WHERE User_ID = ? AND Type_ID IN (1,2)`;
+
+    db.query(sql, [userId], (err, result) => {
+        if (err) {
+            console.error("❌ Error deleting user:", err);
+            return res.status(500).json({ message: "เกิดข้อผิดพลาดในการลบผู้ใช้" });
+        }
+        res.json({ message: "✅ ลบข้อมูลสำเร็จ" });
+    });
+});
+
+// ✅ API ดึงข้อมูลผู้ใช้ตาม ID
+app.get("/api/admin/users/:id", (req, res) => {
+    const userId = req.params.id;
+
+    const sql = `
+        SELECT User_ID, Username, FName, LName, Email, Phone, Type_ID
+        FROM user
+        WHERE User_ID = ?
+    `;
+
+    db.query(sql, [userId], (err, results) => {
+        if (err) {
+            console.error("❌ Error fetching user:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "ไม่พบข้อมูลผู้ใช้" });
+        }
+
+        res.json(results[0]);
+    });
+});
+
+// ✅ API อัปเดตข้อมูลผู้ใช้
+app.put("/api/admin/users/:id", (req, res) => {
+    const userId = req.params.id;
+    const { FName, LName, Email, Phone } = req.body;
+
+    const sql = `
+        UPDATE user 
+        SET FName = ?, LName = ?, Email = ?, Phone = ? 
+        WHERE User_ID = ?
+    `;
+
+    db.query(sql, [FName, LName, Email, Phone, userId], (err, result) => {
+        if (err) {
+            console.error("❌ Error updating user:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "ไม่พบข้อมูลผู้ใช้ที่ต้องการแก้ไข" });
+        }
+
+        res.json({ message: "✅ อัปเดตข้อมูลผู้ใช้สำเร็จ!" });
+    });
+});
 
 // ✅ Start Server
 app.listen(3000, () => {
