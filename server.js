@@ -1029,26 +1029,43 @@ app.put("/api/rooms/:id", (req, res) => {
     });
 });
 
-
 // ✅ ดึงรายการหอพักทั้งหมด (เฉพาะนักศึกษา)
 app.get("/api/student/dormitories", (req, res) => {
-    const sql = `
-        SELECT d.Dormitory_ID, d.Dormitory_Name, d.Contact_Number, d.Dormitory_Email,
-        IFNULL(GROUP_CONCAT(f.Facility_Name), 'ไม่มีข้อมูล') AS Facility_Names
+    const { type, category } = req.query;
+
+    let sql = `
+        SELECT d.Dormitory_ID, d.Dormitory_Name, d.Contact_Number, d.Dormitory_Email, 
+               d.Dormitory_Type_ID, d.Category_ID,
+               IFNULL(GROUP_CONCAT(f.Facility_Name), 'ไม่มีข้อมูล') AS Facility_Names
         FROM dormitory d
         LEFT JOIN con_fasility_dormitory cfd ON d.Dormitory_ID = cfd.Dormitory_ID
         LEFT JOIN facility f ON cfd.Facility_ID = f.Facility_ID
-        GROUP BY d.Dormitory_ID
+        WHERE d.Status = 'enable'
     `;
 
-    db.query(sql, (err, results) => {
+    let params = [];
+
+    if (type) {
+        sql += " AND d.Dormitory_Type_ID = ?";
+        params.push(type);
+    }
+    if (category) {
+        sql += " AND d.Category_ID = ?";
+        params.push(category);
+    }
+
+    sql += " GROUP BY d.Dormitory_ID";
+
+    db.query(sql, params, (err, results) => {
         if (err) {
             console.error("❌ Error fetching dormitories:", err);
             return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูล" });
         }
+        console.log("📌 ส่งหอพักทั้งหมด:", results.length);
         res.json(results);
     });
 });
+
 
 // ✅ ดึงรายละเอียดหอพัก (รวมประเภท, หมวดหมู่, สิ่งอำนวยความสะดวก)
 app.get("/api/student/dormitories/:id", (req, res) => {
