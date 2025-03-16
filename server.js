@@ -4,6 +4,9 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
 const multer = require("multer");
+const nodemailer = require("nodemailer");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 
 const app = express();
@@ -51,6 +54,15 @@ const verifyStudent = (req, res, next) => {
     next();
 };
 
+// ✅ ตั้งค่า Nodemailer สำหรับส่งอีเมล
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: "takuya.ma@mail.wu.ac.th",  // 📌 เปลี่ยนเป็นอีเมลของคุณ
+        pass: "fpla ovxk kzee rzyr"   // 📌 เปลี่ยนเป็นรหัสผ่านอีเมลของคุณ (ใช้ App Password)
+    }
+});
+
 app.use(express.static(path.join(__dirname, "../public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -97,27 +109,6 @@ app.get("/dashboard_data", (req, res) => {
         });
 });
 
-// // ✅ API ดึงประเภทหอพัก
-// app.get("/dormitory_types", (req, res) => {
-//     db.query("SELECT * FROM dormitory_type", (err, result) => {
-//         if (err) {
-//             console.error("❌ Error fetching dormitory types:", err);
-//             return res.status(500).json({ error: "Database error" });
-//         }
-//         res.json(result);
-//     });
-// });
-
-// // ✅ API ดึงหมวดหมู่หอพัก
-// app.get("/dormitory_categories", (req, res) => {
-//     db.query("SELECT * FROM dormitory_category", (err, result) => {
-//         if (err) {
-//             console.error("❌ Error fetching dormitory categories:", err);
-//             return res.status(500).json({ error: "Database error" });
-//         }
-//         res.json(result);
-//     });
-// });
 
 //เพิ่มประเถทหรอพัก
 app.post("/api/dormitory_types", (req, res) => {
@@ -1128,7 +1119,7 @@ app.put("/api/admin/users/:id", (req, res) => {
     });
 });
 
-// ✅ API สำหรับเข้าสู่ระบบ
+
 app.post("/api/login", (req, res) => {
     const { username, password } = req.body;
 
@@ -1137,7 +1128,7 @@ app.post("/api/login", (req, res) => {
     }
 
     const sql = "SELECT User_ID, Username, Password, Type_ID FROM user WHERE Username = ?";
-    db.query(sql, [username], (err, results) => {
+    db.query(sql, [username], async (err, results) => {
         if (err) {
             console.error("❌ Error checking user:", err);
             return res.status(500).json({ error: "เกิดข้อผิดพลาดในการเข้าสู่ระบบ" });
@@ -1149,7 +1140,9 @@ app.post("/api/login", (req, res) => {
 
         const user = results[0];
 
-        if (password !== user.Password) { // ควรใช้ bcrypt เปรียบเทียบรหัสผ่านที่เข้ารหัส
+        // ✅ เปรียบเทียบรหัสผ่านที่เข้ารหัสกับรหัสผ่านที่ผู้ใช้ป้อน
+        const isMatch = await bcrypt.compare(password, user.Password);
+        if (!isMatch) {
             return res.status(401).json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
         }
 
@@ -1226,30 +1219,74 @@ app.put("/api/users/:id", async (req, res) => {
     }
 });
 
-// ✅ API สมัครบัญชีผู้ใช้ (เฉพาะนักศึกษาและเจ้าของหอพัก)
-app.post("/api/register", (req, res) => {
+
+app.post("/api/register", async (req, res) => {
     const { Username, Password, FName, LName, Email, Phone, Type_ID } = req.body;
 
-    // ✅ ตรวจสอบว่าประเภทผู้ใช้ถูกต้อง (เฉพาะ 1 = นักศึกษา, 2 = เจ้าของหอพัก)
-    if (![1, 2].includes(parseInt(Type_ID))) {
-        return res.status(400).json({ error: "❌ ไม่สามารถสมัครบัญชีประเภทนี้ได้" });
-    }
+    // ✅ เข้ารหัสรหัสผ่านก่อนบันทึก
+    const hashedPassword = await bcrypt.hash(Password, 10);
 
-    // ✅ ตรวจสอบค่าข้อมูลที่จำเป็น
-    if (!Username || !Password || !FName || !LName || !Email || !Phone) {
-        return res.status(400).json({ error: "❌ กรุณากรอกข้อมูลให้ครบถ้วน" });
-    }
-
-    // ✅ เพิ่มข้อมูลลงฐานข้อมูล
     const sql = `INSERT INTO user (Username, Password, FName, LName, Email, Phone, Type_ID) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    
-    db.query(sql, [Username, Password, FName, LName, Email, Phone, Type_ID], (err, result) => {
+
+    db.query(sql, [Username, hashedPassword, FName, LName, Email, Phone, Type_ID], (err, result) => {
         if (err) {
-            console.error("❌ Error registering user:", err);
             return res.status(500).json({ error: "❌ ไม่สามารถสมัครบัญชีได้" });
         }
-        res.json({ message: "✅ สมัครบัญชีสำเร็จ!", userId: result.insertId });
+        res.json({ message: "✅ สมัครบัญชีสำเร็จ!" });
     });
+});
+
+// ✅ 1. API ขอรีเซ็ตรหัสผ่าน
+app.post("/api/forgot-password", (req, res) => {
+    const { email } = req.body;
+    
+    // ค้นหาผู้ใช้ตามอีเมล
+    db.query("SELECT * FROM user WHERE Email = ?", [email], (err, result) => {
+        if (err || result.length === 0) {
+            return res.status(404).json({ error: "❌ ไม่พบอีเมลนี้ในระบบ" });
+        }
+
+        const user = result[0];
+        const token = jwt.sign({ id: user.User_ID }, "secret-key", { expiresIn: "15m" });  // Token มีอายุ 15 นาที
+        const resetLink = `http://localhost:3000/Login/reset-password.html?token=${token}`;
+
+        // ส่งอีเมลให้ผู้ใช้
+        const mailOptions = {
+            from: "your-email@gmail.com",
+            to: email,
+            subject: "🔐 รีเซ็ตรหัสผ่านของคุณ",
+            html: `<p>คลิกลิงก์ด้านล่างเพื่อเปลี่ยนรหัสผ่านของคุณ:</p>
+                   <a href="${resetLink}">${resetLink}</a>
+                   <p>ลิงก์นี้จะหมดอายุภายใน 15 นาที</p>`
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                return res.status(500).json({ error: "❌ ไม่สามารถส่งอีเมลได้" });
+            }
+            res.json({ message: "✅ กรุณาตรวจสอบอีเมลของคุณเพื่อตั้งค่ารหัสผ่านใหม่" });
+        });
+    });
+});
+
+// ✅ 2. API ตั้งรหัสผ่านใหม่
+app.post("/api/reset-password", async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    try {
+        const decoded = jwt.verify(token, "secret-key");
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        db.query("UPDATE user SET Password = ? WHERE User_ID = ?", [hashedPassword, decoded.id], (err, result) => {
+            if (err) {
+                return res.status(500).json({ error: "❌ ไม่สามารถเปลี่ยนรหัสผ่านได้" });
+            }
+            res.json({ message: "✅ รหัสผ่านของคุณถูกเปลี่ยนเรียบร้อยแล้ว!" });
+        });
+
+    } catch (error) {
+        res.status(400).json({ error: "❌ ลิงก์หมดอายุหรือไม่ถูกต้อง" });
+    }
 });
 
 // ✅ Start Server
