@@ -1226,6 +1226,32 @@ app.put("/api/users/:id", async (req, res) => {
     }
 });
 
+// ✅ API สมัครบัญชีผู้ใช้ (เฉพาะนักศึกษาและเจ้าของหอพัก)
+app.post("/api/register", (req, res) => {
+    const { Username, Password, FName, LName, Email, Phone, Type_ID } = req.body;
+
+    // ✅ ตรวจสอบว่าประเภทผู้ใช้ถูกต้อง (เฉพาะ 1 = นักศึกษา, 2 = เจ้าของหอพัก)
+    if (![1, 2].includes(parseInt(Type_ID))) {
+        return res.status(400).json({ error: "❌ ไม่สามารถสมัครบัญชีประเภทนี้ได้" });
+    }
+
+    // ✅ ตรวจสอบค่าข้อมูลที่จำเป็น
+    if (!Username || !Password || !FName || !LName || !Email || !Phone) {
+        return res.status(400).json({ error: "❌ กรุณากรอกข้อมูลให้ครบถ้วน" });
+    }
+
+    // ✅ เพิ่มข้อมูลลงฐานข้อมูล
+    const sql = `INSERT INTO user (Username, Password, FName, LName, Email, Phone, Type_ID) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    
+    db.query(sql, [Username, Password, FName, LName, Email, Phone, Type_ID], (err, result) => {
+        if (err) {
+            console.error("❌ Error registering user:", err);
+            return res.status(500).json({ error: "❌ ไม่สามารถสมัครบัญชีได้" });
+        }
+        res.json({ message: "✅ สมัครบัญชีสำเร็จ!", userId: result.insertId });
+    });
+});
+
 // ✅ Start Server
 app.listen(3000, () => {
     console.log("🚀 Server running on port 3000");
